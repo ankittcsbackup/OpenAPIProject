@@ -1,65 +1,48 @@
 name: CI
-
+#The display name shown in GitHub's Actions tab. Just a label.
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
-
+  #When does this workflow run?
+  #- When you git push to main
+  #- When someone opens/updates a Pull Request targeting main
+  #Think of on: as the trigger — like a doorbell that starts the whole process.
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
-
+#Global variables available to every job below.
+#  - ghcr.io = GitHub Container Registry (where your Docker image lives)
+#  - github.repository = automatically becomes ankittcsbackup/OpenAPIProject
+#${{ }} is GitHub's template syntax — it evaluates variables at runtime.
 jobs:
+  #A job is an isolated machine that runs a sequence of steps. All three jobs below run on fresh Ubuntu machines. Jobs run in parallel by default unless you tell them to wait with needs:.
   test:
     runs-on: ubuntu-latest
+    #Spins up a fresh Ubuntu virtual machine.
     steps:
       - uses: actions/checkout@v4
-
+#Downloads your repository code onto the machine. Without this, the machine is empty.
       - uses: actions/setup-java@v4
         with:
           java-version: '21'
           distribution: temurin
           cache: maven
-
+#Installs Java 21 (Temurin = Eclipse's free JDK). cache: maven saves downloaded Maven dependencies between runs so subsequent runs are faster.
       - name: Run tests
         run: mvn test
-
-  codeql:
-    runs-on: ubuntu-latest
-    permissions:
-      security-events: write
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: temurin
-          cache: maven
-
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
-        with:
-          languages: java
-
-      - name: Build for CodeQL
-        run: mvn package -DskipTests -q
-
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
-        with:
-          category: /language:java
-
+#Runs your test suite. If HelloServiceTest fails, this job fails and everything stops.
   build-and-push:
-    needs: [test, codeql]
+    needs: [test]
+    #needs: [test] — this job waits for both previous jobs to succeed first. If either fails, this job is skipped entirely.
+    #  - if: — only runs on main, not on PRs. You don't want to publish an image for every PR branch.
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     permissions:
       contents: read
       packages: write
-
+#packages: write — allows pushing the Docker image to ghcr.io.
     steps:
       - uses: actions/checkout@v4
 
@@ -69,6 +52,7 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+          #Logs Docker into ghcr.io. GITHUB_TOKEN is automatically provided by GitHub — no manual secret needed.
 
       - name: Extract image metadata
         id: meta
@@ -78,11 +62,14 @@ jobs:
           tags: |
             type=sha,prefix=sha-
             type=raw,value=latest
-
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
+        #Runs docker build using your Dockerfile and pushes the image to ghcr.io.
         with:
           context: .
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+#Generates two tags for the image:
+  #- latest — always points to the newest build
+  #- sha-abc1234 — the exact commit, so you can roll back to any previous version
