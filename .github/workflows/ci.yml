@@ -5,9 +5,15 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+    types: [ opened, synchronize, edited, ready_for_review ]
   #When does this workflow run?
   #- When you git push to main
   #- When someone opens/updates a Pull Request targeting main
+  #pull_request types controls exactly which PR events fire the workflow:
+  #  - opened: PR is first created
+  #  - synchronize: new commits pushed to the PR branch
+  #  - edited: PR title or description changed
+  #  - ready_for_review: PR moved from Draft to Ready (avoids wasting CI minutes on draft PRs)
   #Think of on: as the trigger — like a doorbell that starts the whole process.
 env:
   REGISTRY: ghcr.io
@@ -21,28 +27,55 @@ jobs:
   test:
     runs-on: ubuntu-latest
     #Spins up a fresh Ubuntu virtual machine.
+    permissions:
+      contents: read
+      pull-requests: write
+      #pull-requests: write — allows the JaCoCo action to post a coverage comment on the PR.
     steps:
       - uses: actions/checkout@v4
-#Downloads your repository code onto the machine. Without this, the machine is empty.
+        with:
+          fetch-depth: 0
+      #Downloads your repository code onto the machine. Without this, the machine is empty.
+      #fetch-depth: 0 fetches the full git history instead of just the latest commit.
+      #Needed for accurate versioning via git tags and better CodeQL analysis.
+
       - uses: actions/setup-java@v4
         with:
           java-version: '21'
           distribution: temurin
           cache: maven
-#Installs Java 21 (Temurin = Eclipse's free JDK). cache: maven saves downloaded Maven dependencies between runs so subsequent runs are faster.
-      - name: Run tests
-        run: mvn test
-#Runs your test suite. If HelloServiceTest fails, this job fails and everything stops.
+      #Installs Java 21 (Temurin = Eclipse's free JDK). cache: maven saves downloaded Maven dependencies between runs so subsequent runs are faster.
+
+      - name: Run tests and check coverage
+        run: mvn verify -ntp
+      #mvn verify runs tests AND the JaCoCo coverage gate.
+      #If coverage drops below 70% instruction / 60% branch, this step fails and the job stops.
+      #-ntp (--no-transfer-progress) suppresses Maven download progress bars for cleaner CI logs.
+
+      - name: Post coverage summary on PR
+        if: github.event_name == 'pull_request'
+        uses: madrapps/jacoco-report@v1.6.1
+        with:
+          paths: ${{ github.workspace }}/target/site/jacoco/jacoco.xml
+          token: ${{ secrets.GITHUB_TOKEN }}
+          min-coverage-overall: 70
+          min-coverage-changed-files: 60
+          title: Code Coverage Report
+          update-comment: true
+      #Only runs on PRs (not on direct pushes to main).
+      #Reads the JaCoCo XML report and posts a coverage summary as a PR comment.
+      #update-comment: true replaces the previous comment on re-runs instead of adding a new one.
+
   build-and-push:
     needs: [test]
-    #needs: [test] — this job waits for both previous jobs to succeed first. If either fails, this job is skipped entirely.
+    #needs: [test] — this job waits for test to succeed first. If it fails, this job is skipped entirely.
     #  - if: — only runs on main, not on PRs. You don't want to publish an image for every PR branch.
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     permissions:
       contents: read
       packages: write
-#packages: write — allows pushing the Docker image to ghcr.io.
+    #packages: write — allows pushing the Docker image to ghcr.io.
     steps:
       - uses: actions/checkout@v4
 
@@ -62,14 +95,16 @@ jobs:
           tags: |
             type=sha,prefix=sha-
             type=raw,value=latest
+      #Generates two tags for the image:
+      #- latest — always points to the newest build
+      #- sha-abc1234 — the exact commit, so you can roll back to any previous version
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         #Runs docker build using your Dockerfile and pushes the image to ghcr.io.
+        #On success the CD workflow (cd.yml) is automatically triggered via workflow_run.
         with:
           context: .
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-#Generates two tags for the image:
-  #- latest — always points to the newest build
-  #- sha-abc1234 — the exact commit, so you can roll back to any previous version

@@ -1,40 +1,67 @@
 name: CodeQL
-
+#What is CodeQL?
+#
+#  Think of CodeQL as a security detective for your code. Instead of just reading your source files, it watches your code compile, builds a database of how data moves through your entire app, then runs hundreds
+#  of pre-written rules against it to find security vulnerabilities — things like SQL injection, hardcoded passwords, or data from a user request reaching a dangerous function without being checked first.
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
+    types: [ opened, synchronize, edited, ready_for_review ]
   schedule:
     - cron: '0 6 * * 1'  # every Monday at 06:00 UTC
-
+#Three triggers — this is the key difference from ci.yml:
+#
+#  - push / pull_request — same as CI, runs when code changes
+#  - schedule — runs automatically on a timer, every Monday at 06:00 UTC, even if nobody touched the code
+#Why the schedule? Security vulnerabilities are discovered every day. A new CVE (publicly known vulnerability) might be found in a pattern your code already has. The weekly scan catches those without you
+#  needing to push anything.
 jobs:
   analyze:
     name: Analyze Java
     runs-on: ubuntu-latest
+    #One job called analyze, displayed as "Analyze Java" in GitHub. Runs on a fresh Ubuntu machine.
     permissions:
       security-events: write
       contents: read
-
+#Two specific permissions granted to this job:
+    #  - contents: read — allowed to download your repo code
+    #  - security-events: write — allowed to upload scan results to GitHub's Security tab
+    #Without security-events: write, the scan would run but the results would go nowhere.
     steps:
       - uses: actions/checkout@v4
-
+        with:
+          fetch-depth: 0
+#Downloads your repo code onto the machine. Same as every other workflow.
+#fetch-depth: 0 fetches full git history — CodeQL uses this for more accurate data-flow analysis across commits.
       - uses: actions/setup-java@v4
         with:
           java-version: '21'
           distribution: temurin
           cache: maven
-
+#Installs Java 21 so Maven can compile your project. cache: maven avoids re-downloading all your dependencies every run.
+      #Installs Java 21 so Maven can compile your project. cache: maven avoids re-downloading all your dependencies every run.
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
           languages: java
           queries: security-and-quality
+#This step does two things:
+      #  1. Sets up CodeQL's engine and tells it to watch for Java
+      #  2. queries: security-and-quality — selects which rulebook to use. This is the default set of rules that checks for both security vulnerabilities and code quality issues. You could choose a different set or even write your own custom rules if you wanted.
 
       - name: Build for CodeQL
-        run: mvn package -DskipTests -q
-
+        run: mvn package -DskipTests -ntp
+#This is the most important step to understand. CodeQL does not just read your .java files. It hooks into the compiler and watches data flow as your code is compiled — tracking where user input enters your
+      #  app, where it travels, and whether it ever reaches a dangerous sink (like a database query or file path) without being sanitised.
+      # package — compiles and packages everything
+      #  - -DskipTests — skips running tests (CodeQL doesn't need them)
+      #  - -q — quiet mode, less noise in the logs
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
         with:
           category: /language:java
+  #Runs all the security and quality rules against the database CodeQL built during the previous step. Results are uploaded to GitHub → Security → Code scanning alerts.
+
+#category: /language:java is a label that groups results — useful if you later add more languages (e.g. JavaScript).

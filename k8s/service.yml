@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Service
+# A Service is the stable network address for your app.
+# Pods are temporary — they get new IP addresses every time they restart.
+# A Service gives you one fixed address that always routes to the healthy pods.
+metadata:
+  name: hello-api-service
+  namespace: hello-api
+spec:
+  type: NodePort
+  # NodePort exposes the app on a fixed port on your laptop (localhost:30080).
+  # This is the simplest way to reach a Kubernetes app from Docker Desktop.
+  selector:
+    app: hello-api
+  # selector matches the labels on the pods in deployment.yml.
+  # This is how the Service knows which pods to route traffic to.
+  ports:
+    - protocol: TCP
+      port: 8080
+      # port: the port the Service listens on inside the cluster.
+      targetPort: 8080
+      # targetPort: the port on the container to forward traffic to (must match containerPort in deployment).
+      nodePort: 30080
+      # nodePort: the port exposed on your laptop.
+      # Access the app at http://localhost:30080/hello
+      # Range must be 30000-32767 — this is a Kubernetes rule.

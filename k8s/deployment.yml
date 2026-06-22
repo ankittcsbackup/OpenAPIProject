@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+# A Deployment tells Kubernetes: keep this app running, and here is how to run it.
+# It manages creating, updating, and restarting containers automatically.
+metadata:
+  name: hello-api
+  namespace: hello-api
+spec:
+  replicas: 2
+  # replicas: 2 means Kubernetes runs 2 copies (pods) of your app at all times.
+  # If one crashes, the other keeps serving traffic while Kubernetes restarts the broken one.
+  selector:
+    matchLabels:
+      app: hello-api
+  # selector + labels work as a tag system.
+  # The Deployment uses this to know which pods it owns and manages.
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  # RollingUpdate: deploy new version gradually instead of all at once.
+  # maxUnavailable: 1 — at most 1 pod can be down during the update.
+  # maxSurge: 1 — at most 1 extra pod can be created above the replica count during update.
+  # Result: during a deploy you always have at least 1 pod running → zero downtime.
+  template:
+    metadata:
+      labels:
+        app: hello-api
+    spec:
+      imagePullSecrets:
+        - name: ghcr-secret
+        # imagePullSecrets tells Kubernetes which credentials to use when pulling
+        # the image from ghcr.io. This references the secret you created with kubectl.
+      containers:
+        - name: hello-api
+          image: ghcr.io/ankittcsbackup/openapiproject:latest
+          # CD workflow updates this image tag automatically on every deploy.
+          # ArgoCD detects the change and applies the new tag to the cluster.
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: hello-api-config
+          # Loads all key-value pairs from the ConfigMap as environment variables
+          # inside the container. Equivalent to setting SERVER_PORT=8080 etc.
+          readinessProbe:
+            httpGet:
+              path: /hello
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          # readinessProbe: Kubernetes checks this endpoint before sending real traffic to a pod.
+          # initialDelaySeconds: 15 — wait 15s after start before first check (Spring needs time to boot).
+          # If /hello returns non-200, Kubernetes marks the pod as not ready and stops routing traffic to it.
+          livenessProbe:
+            httpGet:
+              path: /hello
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          # livenessProbe: checks if the app is still alive (not frozen or deadlocked).
+          # If this fails, Kubernetes kills and restarts the container automatically.
+          # Difference: readiness = ready for traffic?, liveness = still alive?
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          # requests: minimum guaranteed resources Kubernetes reserves for this container.
+          # limits: maximum it is allowed to use — prevents one app starving the whole cluster.
+          # 250m cpu = 0.25 of one CPU core. 256Mi = 256 megabytes of memory.
