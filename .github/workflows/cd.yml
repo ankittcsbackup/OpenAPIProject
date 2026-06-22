@@ -29,7 +29,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.REPO_PAT }}
         #fetch-depth: 0 — full history needed so git can push the commit back cleanly.
         #token: needed with contents: write permission to allow pushing to main.
 
