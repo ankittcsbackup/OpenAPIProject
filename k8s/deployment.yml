@@ -39,7 +39,7 @@ spec:
         #References the secret you created with kubectl create secret.
       containers:
         - name: hello-api
-          image: ghcr.io/ankittcsbackup/openapiproject:sha-bf9cea1
+          image: ghcr.io/ankittcsbackup/openapiproject:sha-9a712cd
           # CD workflow updates this image tag automatically on every deploy.
           # ArgoCD detects the change and applies the new tag to the cluster.
           ports:
