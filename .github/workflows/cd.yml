@@ -76,8 +76,8 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     #Runs in parallel with update-manifest after every successful CI.
-    #Keeps only the last 5 images in ghcr.io — deletes everything older automatically.
-    #This prevents ghcr.io and Docker Desktop from accumulating hundreds of old sha- tagged images.
+    #Keeps only the last 3 images in ghcr.io — deletes everything older automatically.
+    #This prevents ghcr.io and Docker Desktop from accumulating old sha- tagged images.
     permissions:
       packages: write
       #packages: write — needed to delete old images from ghcr.io.
@@ -88,7 +88,8 @@ jobs:
         with:
           package-name: openapiproject
           package-type: container
-          min-versions-to-keep: 5
+          min-versions-to-keep: 3
           delete-only-untagged-versions: false
-        #min-versions-to-keep: 5 — always keeps latest + 4 previous (useful for rollback if new version breaks).
-        #delete-only-untagged-versions: false — also deletes old sha- tagged versions, not just dangling ones.
+        #min-versions-to-keep: 3 — keeps latest + 2 previous only (enough for one rollback).
+        #Deleted from ghcr.io means Docker Desktop stops showing them after next prune.
+        #delete-only-untagged-versions: false — also removes old sha- tagged versions, not just dangling ones.
