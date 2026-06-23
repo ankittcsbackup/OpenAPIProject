@@ -21,7 +21,8 @@ Spring Boot 3.3 · Java 21 · Maven · Contract-first OpenAPI (openapi-generator
 
 | Skill | What it does |
 |---|---|
-| `/check-cluster` | Checks pods, ArgoCD sync, app response |
+| `/verify-build` | Runs `mvn verify`, reports test count and coverage gate result |
+| `/check-endpoint <url>` | Checks if a URL returns HTTP 200 |
+| `/check-cluster` | Checks pods, ArgoCD sync, and app response in one table |
 | `/deploy-monitoring` | Applies k8s/monitoring/ manifests |
-| `/verify-build` | Runs mvn verify, reports coverage result |
 | `/bootstrap` | Full one-time cluster setup |
