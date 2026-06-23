@@ -51,7 +51,9 @@ data:
           "title": "HTTP Request Rate",
           "type": "timeseries",
           "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+          "datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"},
           "targets": [{
+            "datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"},
             "expr": "rate(http_server_requests_seconds_count{application=\"hello-api\"}[1m])",
             "legendFormat": "{{method}} {{uri}} {{status}}"
           }]
@@ -60,7 +62,9 @@ data:
           "title": "HTTP Response Time (p99)",
           "type": "timeseries",
           "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+          "datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"},
           "targets": [{
+            "datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"},
             "expr": "histogram_quantile(0.99, rate(http_server_requests_seconds_bucket{application=\"hello-api\"}[1m]))",
             "legendFormat": "p99 {{uri}}"
           }]
@@ -69,7 +73,9 @@ data:
           "title": "JVM Memory Used",
           "type": "timeseries",
           "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+          "datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"},
           "targets": [{
+            "datasource": {"type": "prometheus", "uid": "PBFA97CFB590B2093"},
             "expr": "jvm_memory_used_bytes{application=\"hello-api\"}",
             "legendFormat": "{{area}} {{id}}"
           }]
@@ -78,9 +84,10 @@ data:
           "title": "Application Logs",
           "type": "logs",
           "gridPos": {"h": 8, "w": 24, "x": 0, "y": 16},
-          "datasource": {"type": "loki", "uid": "loki"},
+          "datasource": {"type": "loki", "uid": "P8E80F9AEF21F6940"},
           "targets": [{
-            "expr": "{namespace=\"hello-api\", app=\"hello-api\"}",
+            "datasource": {"type": "loki", "uid": "P8E80F9AEF21F6940"},
+            "expr": "{namespace=\"hello-api\"}",
             "legendFormat": ""
           }]
         }
