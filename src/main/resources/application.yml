@@ -6,3 +6,35 @@ springdoc:
     path: /api-docs
   swagger-ui:
     path: /swagger-ui.html
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus,info
+        # Exposes these actuator endpoints over HTTP.
+        # prometheus — Prometheus scrapes this every 15s for metrics.
+        # health     — Kubernetes readiness/liveness probes use this.
+        # metrics    — raw metrics browser for debugging.
+        # info       — app version and build info.
+  endpoint:
+    health:
+      show-details: always
+      # show-details: always — shows full health details (disk, db, etc.)
+      # useful for debugging why a pod fails its readiness probe.
+  metrics:
+    tags:
+      application: hello-api
+      # Tags every metric with the app name.
+      # In Grafana you can filter dashboards by application=hello-api.
+
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    # Structured log format: timestamp, thread, level, logger, message.
+    # Loki collects these lines and Grafana lets you search/filter them.
+  level:
+    root: INFO
+    com.example.hello: DEBUG
+    # root: INFO  — only INFO and above for framework code (less noise).
+    # com.example.hello: DEBUG — full debug logs for your own code only.

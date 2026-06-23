@@ -44,6 +44,20 @@
    <artifactId>jackson-databind-nullable</artifactId>
    <version>0.2.6</version>
   </dependency>
+
+  <dependency>
+   <groupId>org.springframework.boot</groupId>
+   <artifactId>spring-boot-starter-actuator</artifactId>
+   <!-- Exposes /actuator/health, /actuator/metrics, /actuator/prometheus endpoints.
+        Prometheus scrapes /actuator/prometheus to collect application metrics. -->
+  </dependency>
+
+  <dependency>
+   <groupId>io.micrometer</groupId>
+   <artifactId>micrometer-registry-prometheus</artifactId>
+   <!-- Formats Spring Boot metrics in Prometheus exposition format.
+        Without this, /actuator/prometheus returns 404. -->
+  </dependency>
  </dependencies>
 
  <build>
