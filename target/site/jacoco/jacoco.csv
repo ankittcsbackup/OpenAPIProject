@@ -1,7 +1,0 @@
-GROUP,PACKAGE,CLASS,INSTRUCTION_MISSED,INSTRUCTION_COVERED,BRANCH_MISSED,BRANCH_COVERED,LINE_MISSED,LINE_COVERED,COMPLEXITY_MISSED,COMPLEXITY_COVERED,METHOD_MISSED,METHOD_COVERED
-hello-openapi,com.example.hello.api,HelloApiController,0,15,0,0,0,4,0,2,0,2
-hello-openapi,com.example.hello.api,ApiUtil,27,0,0,0,9,0,2,0,2,0
-hello-openapi,com.example.hello.api,HelloApi,38,0,4,0,10,0,5,0,3,0
-hello-openapi,com.example.hello,HelloApplication,5,3,0,0,2,1,1,1,1,1
-hello-openapi,com.example.hello.model,GetHello200Response,72,11,8,0,17,4,9,3,5,3
-hello-openapi,com.example.hello.service,HelloServiceImpl,0,5,0,0,0,2,0,2,0,2

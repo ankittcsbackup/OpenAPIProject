@@ -1,5 +1,0 @@
-README.md
-pom.xml
-src/main/java/com/example/hello/api/ApiUtil.java
-src/main/java/com/example/hello/api/HelloApi.java
-src/main/java/com/example/hello/model/GetHello200Response.java
