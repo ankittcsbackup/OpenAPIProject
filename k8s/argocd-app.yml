@@ -19,8 +19,10 @@ spec:
   source:
     repoURL: https://github.com/ankittcsbackup/OpenAPIProject.git
     # The GitHub repo ArgoCD will watch.
-    targetRevision: main
-    # The branch to watch. Any commit to main that changes k8s/ will trigger a sync.
+    targetRevision: gitops
+    # ArgoCD watches the gitops branch, not main.
+    # main = application code changes by developers.
+    # gitops = manifest/infrastructure changes pushed by the CD bot.
     path: k8s
     # The folder inside the repo that contains your Kubernetes manifests.
     # ArgoCD only watches this folder — changes elsewhere do not trigger a deploy.
