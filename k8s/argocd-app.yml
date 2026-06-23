@@ -2,6 +2,13 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 # This is an ArgoCD-specific resource type (not standard Kubernetes).
 # It tells ArgoCD: watch this Git repo folder and keep the cluster in sync with it.
+#This is not a standard Kubernetes resource — it is an ArgoCD-specific resource that tells ArgoCD its job.
+#
+#  - source — watch this GitHub repo, this branch, this folder
+#  - destination — deploy into this cluster and namespace
+#  - prune: true — if you delete a file from k8s/, delete the corresponding resource from the cluster
+#  - selfHeal: true — if someone manually edits the cluster with kubectl edit, revert it back to match Git.
+# Git is always the single source of truth.
 metadata:
   name: hello-api
   namespace: argocd

@@ -96,6 +96,13 @@
    </plugin>
 
    <plugin>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-maven-plugin</artifactId>
+    <!-- Repackages the plain JAR into an executable fat JAR with Main-Class manifest.
+         Without this, java -jar app.jar fails with "no main manifest attribute". -->
+   </plugin>
+
+   <plugin>
     <groupId>org.openapitools</groupId>
     <artifactId>openapi-generator-maven-plugin</artifactId>
     <version>7.5.0</version>

@@ -9,6 +9,9 @@ spec:
   replicas: 2
   # replicas: 2 means Kubernetes runs 2 copies (pods) of your app at all times.
   # If one crashes, the other keeps serving traffic while Kubernetes restarts the broken one.
+  #Labels are sticky tags on pods. The selector says "I own all pods tagged app: hello-api".
+  #This is how the Deployment knows which pods it is responsible for — like a manager knowing which team members report
+  #  to them.
   selector:
     matchLabels:
       app: hello-api
@@ -32,6 +35,8 @@ spec:
         - name: ghcr-secret
         # imagePullSecrets tells Kubernetes which credentials to use when pulling
         # the image from ghcr.io. This references the secret you created with kubectl.
+        #The credentials Kubernetes uses to pull your image from the private ghcr.io registry.
+        #References the secret you created with kubectl create secret.
       containers:
         - name: hello-api
           image: ghcr.io/ankittcsbackup/openapiproject:latest

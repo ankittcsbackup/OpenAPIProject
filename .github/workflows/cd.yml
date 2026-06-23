@@ -48,6 +48,8 @@ jobs:
         #sed -i performs an in-place find-and-replace in deployment.yml.
         #It replaces whatever image tag is currently there with the new SHA tag.
         #Example: image: ghcr.io/ankittcsbackup/openapiproject:sha-a1b2c3d
+        #sed is a text replacement tool. It finds the image line in deployment.yml and replaces the tag. This is the only line that changes in the entire file.
+
 
       - name: Commit and push updated manifest
         run: |
@@ -60,3 +62,5 @@ jobs:
         #git diff --staged --quiet: checks if there is actually a change before committing.
         #  If the tag is identical (re-run of same commit), this skips the commit — avoids empty commits.
         #git push: pushes the change to main → ArgoCD detects it → deploy begins.
+        #Commits the updated deployment.yml back to main. This commit is what ArgoCD detects — it is the trigger that starts the actual deployment on the cluster.
+
