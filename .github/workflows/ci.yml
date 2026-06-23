@@ -72,6 +72,10 @@ jobs:
     #  - if: — only runs on main, not on PRs. You don't want to publish an image for every PR branch.
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
+    outputs:
+      image-pushed: ${{ steps.push.outputs.pushed }}
+      #image-pushed: signals to CD that the image was actually built and pushed successfully.
+      #CD checks this before updating the manifest — prevents referencing a non-existent image.
     permissions:
       contents: read
       packages: write
@@ -99,25 +103,18 @@ jobs:
       #- latest — always points to the newest build
       #- sha-abc1234 — the exact commit, so you can roll back to any previous version
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-        #QEMU enables cross-platform builds on the GitHub Actions AMD64 runner.
-        #Without this, the runner can only build AMD64 images.
-        #With this, it can also build ARM64 — removing the warning on Apple Silicon Macs.
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-        #Buildx is Docker's extended build engine that supports multi-platform builds.
-        #Required to use the platforms: option below.
-
       - name: Build and push Docker image
+        id: push
         uses: docker/build-push-action@v5
-        #Builds for both AMD64 (GitHub Actions / Intel) and ARM64 (Apple Silicon).
-        #ghcr.io stores both variants under the same tag — Docker picks the right one automatically.
+        #Builds and pushes to ghcr.io. AMD64 only for now — reliable on GitHub Actions runners.
         #On success the CD workflow (cd.yml) is automatically triggered via workflow_run.
         with:
           context: .
           push: true
-          platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Confirm image pushed
+        run: echo "pushed=true" >> $GITHUB_OUTPUT
+        id: push-confirm
+        #Sets the job output so CD knows the image was successfully built and pushed.
