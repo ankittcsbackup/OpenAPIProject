@@ -1,9 +1,8 @@
 name: CD
 #Continuous Deployment workflow.
-#Runs AFTER CI succeeds on main.
-#Two responsibilities:
-#  1. Update image tag in k8s/deployment.yml on the gitops branch (keeps main history clean)
-#  2. Delete old images from ghcr.io keeping only the last 5 (keeps registry clean)
+#This runs AFTER the CI workflow builds and pushes the Docker image.
+#Its only job is to update the image tag in k8s/deployment.yml and commit it back to the gitops branch.
+#ArgoCD running inside your cluster detects that commit and deploys the new version automatically.
 #
 #Why a separate gitops branch?
 #  main should only contain application code commits made by developers.
@@ -15,15 +14,21 @@ on:
     workflows: [CI]
     types: [completed]
     branches: [main]
+  #workflow_run: this workflow is triggered by another workflow finishing.
+  #workflows: [CI] — wait for the CI workflow specifically.
+  #types: [completed] — fires when CI finishes (whether passed or failed — we filter below).
+  #branches: [main] — only trigger when CI ran against the main branch.
 
 jobs:
   update-manifest:
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
-    #Gate: only run if CI passed. Failed CI = no deploy.
+    #Only run this job if the CI workflow actually succeeded.
+    #If tests failed or coverage gate failed, CI conclusion = failure → this job is skipped.
+    #This is the gate that connects CI to CD — bad code never reaches the cluster.
     permissions:
       contents: write
-      #contents: write — needed to commit and push to the gitops branch.
+      #contents: write — needed to commit the updated image tag back to the gitops branch.
 
     steps:
       - uses: actions/checkout@v4
@@ -32,19 +37,26 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           ref: gitops
           #ref: gitops — checks out the gitops branch, not main.
-          #This is where ArgoCD reads manifests from, keeping main clean.
+          #This is where ArgoCD reads manifests from, keeping main history clean.
+          #fetch-depth: 0 — full history needed so git can push the commit back cleanly.
+          #token: needed with contents: write permission to allow pushing to the gitops branch.
 
       - name: Get the image SHA tag from CI
         id: image-tag
         run: |
           SHA=$(echo "${{ github.event.workflow_run.head_sha }}" | cut -c1-7)
           echo "tag=sha-${SHA}" >> $GITHUB_OUTPUT
-        #Derives the same SHA tag CI used when pushing the image to ghcr.io.
+        #GitHub Actions uses sha- prefix (set in ci.yml metadata-action).
+        #We take the first 7 characters of the commit SHA — same format CI used when pushing the image.
+        #GITHUB_OUTPUT is how you pass a value from one step to a later step.
 
       - name: Update image tag in deployment.yml
         run: |
           sed -i "s|image: ghcr.io/ankittcsbackup/openapiproject:.*|image: ghcr.io/ankittcsbackup/openapiproject:${{ steps.image-tag.outputs.tag }}|" k8s/deployment.yml
-        #Replaces the image tag in deployment.yml with the new SHA tag.
+        #sed -i performs an in-place find-and-replace in deployment.yml.
+        #It replaces whatever image tag is currently there with the new SHA tag.
+        #Example: image: ghcr.io/ankittcsbackup/openapiproject:sha-a1b2c3d
+        #sed is a text replacement tool. It finds the image line in deployment.yml and replaces the tag. This is the only line that changes in the entire file.
 
       - name: Commit and push to gitops branch
         run: |
@@ -53,13 +65,19 @@ jobs:
           git add k8s/deployment.yml
           git diff --staged --quiet || git commit -m "deploy: update image tag to ${{ steps.image-tag.outputs.tag }}"
           git push origin gitops
-        #Pushes only to the gitops branch — main is never touched.
+        #git config: sets the commit author to the GitHub Actions bot (not your personal account).
+        #git diff --staged --quiet: checks if there is actually a change before committing.
+        #  If the tag is identical (re-run of same commit), this skips the commit — avoids empty commits.
+        #git push origin gitops: pushes only to the gitops branch — main is never touched.
         #ArgoCD detects this commit on gitops and triggers a rolling deploy.
+        #Commits the updated deployment.yml to gitops. This commit is what ArgoCD detects — it is the trigger that starts the actual deployment on the cluster.
 
   cleanup-images:
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     #Runs in parallel with update-manifest after every successful CI.
+    #Keeps only the last 5 images in ghcr.io — deletes everything older automatically.
+    #This prevents ghcr.io and Docker Desktop from accumulating hundreds of old sha- tagged images.
     permissions:
       packages: write
       #packages: write — needed to delete old images from ghcr.io.
@@ -72,6 +90,5 @@ jobs:
           package-type: container
           min-versions-to-keep: 5
           delete-only-untagged-versions: false
-        #Keeps the 5 most recent images, deletes everything older.
-        #This prevents ghcr.io and Docker Desktop from accumulating hundreds of old sha- tagged images.
-        #min-versions-to-keep: 5 — always keeps latest + 4 previous (useful for rollback).
+        #min-versions-to-keep: 5 — always keeps latest + 4 previous (useful for rollback if new version breaks).
+        #delete-only-untagged-versions: false — also deletes old sha- tagged versions, not just dangling ones.
